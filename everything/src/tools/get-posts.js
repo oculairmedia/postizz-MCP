@@ -2,7 +2,7 @@ import axios from 'axios';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 
 /**
- * Handler function for getting posts from Postizz API
+ * Handler function for getting posts from Postiz API
  */
 export async function handleGetPosts(api, args) {
     try {
@@ -57,7 +57,7 @@ export async function handleGetPosts(api, args) {
 
         const API_URL = "https://postiz.oculair.ca/api/public/v1/posts";
         const headers = {
-            "Authorization": "255364482e25a51ff9a6660135b8c88995e7ae68615fb9a67ad14d601f8fe0ff",
+            "Authorization": api.defaults.headers.Authorization,
             "Content-Type": "application/json"
         };
 
@@ -74,7 +74,7 @@ export async function handleGetPosts(api, args) {
         console.log('Headers:', JSON.stringify(headers, null, 2));
         console.log('Params:', JSON.stringify(params, null, 2));
 
-        // Make request to Postizz API
+        // Make request to Postiz API
         const response = await axios.get(API_URL, { headers, params });
 
         return {
@@ -113,7 +113,7 @@ export async function handleGetPosts(api, args) {
  */
 export const getPostsToolDefinition = {
     name: 'get_posts',
-    description: 'Get list of posts from Postizz API with date filtering',
+    description: 'Retrieve scheduled and published posts from Postiz with flexible date filtering (daily, weekly, or monthly view)',
     inputSchema: {
         type: 'object',
         properties: {

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 
 /**
- * Handler function for getting list of integrations from Postizz API
+ * Handler function for getting list of integrations from Postiz API
  */
 export async function handleGetIntegrations(api, args) {
     try {
@@ -15,7 +15,7 @@ export async function handleGetIntegrations(api, args) {
         console.log('Making request to:', API_URL);
         console.log('Headers:', JSON.stringify(headers, null, 2));
 
-        // Make request to Postizz API
+        // Make request to Postiz API
         const response = await axios.get(API_URL, { headers });
 
         return {
@@ -54,7 +54,7 @@ export async function handleGetIntegrations(api, args) {
  */
 export const getIntegrationsToolDefinition = {
     name: 'get_integrations',
-    description: 'Get list of integrations from Postizz API',
+    description: 'Get all connected social media accounts and integrations configured in your Postiz workspace',
     inputSchema: {
         type: 'object',
         properties: {},

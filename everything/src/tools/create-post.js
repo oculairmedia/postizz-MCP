@@ -1,7 +1,8 @@
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import axios from 'axios';
 
 /**
- * Handler function for creating a new post via Postizz API
+ * Handler function for creating a new post via Postiz API
  */
 export async function handleCreatePost(api, args) {
     try {
@@ -63,7 +64,7 @@ export async function handleCreatePost(api, args) {
             }]
         };
 
-        // Make request to Postizz API
+        // Make request to Postiz API
         const response = await api.post(API_URL, postData, { headers });
 
         return {
@@ -100,7 +101,7 @@ export async function handleCreatePost(api, args) {
  */
 export const createPostToolDefinition = {
     name: 'create_post',
-    description: 'Create a new post using Postizz API',
+    description: 'Create a new social media post on Postiz platform with optional media attachments and scheduling',
     inputSchema: {
         type: 'object',
         properties: {
