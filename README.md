@@ -1,12 +1,12 @@
-# Ghost MCP Server with SSE Transport
+# Postiz MCP Server
 
-This repository contains a Model Context Protocol (MCP) server implementation for the Ghost blogging platform with Server-Sent Events (SSE) transport support.
+This repository contains a Model Context Protocol (MCP) server implementation for the Postiz platform.
 
 ## Features
 
-- Supports both SSE and stdio transports
-- Provides access to Ghost Admin API functionality through MCP tools
-- Manage Ghost blog posts, pages, and tags
+- Supports both SSE, HTTP and stdio transports
+- Provides access to Postiz API functionality through MCP tools
+- Manage Postiz content
 - Secure by default with non-root user in Docker
 - Environment variable configuration
 - Health check endpoint
@@ -20,12 +20,11 @@ This repository contains a Model Context Protocol (MCP) server implementation fo
    cp .env.example .env
    ```
 
-2. Edit the `.env` file with your Ghost API credentials:
+2. Edit the `.env` file with your Postiz API credentials:
    ```
-   GHOST_URL=https://your-ghost-blog.com
-   GHOST_KEY_ID=your_ghost_key_id_here
-   GHOST_KEY_SECRET=your_ghost_key_secret_here
-   PORT=3064
+   POSTIZ_API_URL=https://your-postiz-instance.com/api
+   POSTIZ_API_KEY=your_postiz_api_key_here
+   PORT=3084
    NODE_ENV=production
    ```
 
@@ -97,9 +96,11 @@ To build for multiple architectures (amd64 and arm64):
 
 The server provides the following MCP tools:
 
-- **Posts**: `create_ghost_post`, `list_ghost_posts`, `update_ghost_post`, `delete_ghost_post`
-- **Pages**: `create_ghost_page`, `list_ghost_pages`, `update_ghost_page`, `delete_ghost_page`
-- **Tags**: `create_ghost_tag`, `update_ghost_tag`
+- `create-post`
+- `get-posts`
+- `get-integrations`
+- `get-self`
+- `login`
 
 For detailed information about each tool and its parameters, see the [everything/README.md](everything/README.md) file.
 
