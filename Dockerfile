@@ -17,6 +17,9 @@ RUN npm install dotenv
 COPY everything/src ./src
 COPY everything/index.js ./
 
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user and switch to it
 RUN groupadd -r bookstack && useradd -r -g bookstack bookstack
 RUN chown -R bookstack:bookstack /app

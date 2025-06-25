@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import dotenv from 'dotenv';
-import { GhostServer } from './core/server.js';
+import { PostizServer } from './core/server.js';
 import { registerToolHandlers } from './tools/index.js';
 import { runStdio, runSSE, runHTTP } from './transports/index.js';
 
@@ -13,7 +13,7 @@ dotenv.config();
 async function main() {
     try {
         // Create server instance
-        const server = new GhostServer();
+        const server = new PostizServer();
         
         // Register all tool handlers
         registerToolHandlers(server);

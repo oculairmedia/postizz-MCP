@@ -6,7 +6,7 @@ import axios from 'axios';
 /**
  * Core server class that handles initialization and API communication
  */
-export class GhostServer {
+export class PostizServer {
     /**
      * Initialize the MCP server
      */

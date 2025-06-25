@@ -44,10 +44,10 @@ You can also build and run the Docker image directly:
 
 ```bash
 # Build the image
-docker build -t oculair/ghost-mcp:1.0.0 .
+docker build -t oculair/postiz-mcp:latest .
 
 # Run the container
-docker run -p 3064:3064 --env-file .env --rm -it oculair/ghost-mcp:1.0.0
+docker run -p 3084:3084 --env-file .env --rm -it oculair/postiz-mcp:latest
 ```
 
 ### Multi-Architecture Build
@@ -63,13 +63,13 @@ To build for multiple architectures (amd64 and arm64):
 2. Build and push:
    ```bash
    docker buildx build --platform linux/amd64,linux/arm64 \
-     -t oculair/ghost-mcp:1.0.0 \
+     -t oculair/postiz-mcp:latest \
      --push .
    ```
 
 3. Verify the multi-architecture image:
    ```bash
-   docker manifest inspect oculair/ghost-mcp:1.0.0
+   docker manifest inspect oculair/postiz-mcp:latest
    ```
 
 ## Development
@@ -109,7 +109,7 @@ For detailed information about each tool and its parameters, see the [everything
 To debug the container, you can run it with an interactive shell:
 
 ```bash
-docker run -p 3064:3064 --env-file .env --rm -it --entrypoint bash oculair/ghost-mcp:1.0.0
+docker run -p 3084:3084 --env-file .env --rm -it --entrypoint bash oculair/postiz-mcp:latest
 ```
 
 ## Usage with Claude Desktop
@@ -119,8 +119,8 @@ Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "ghost": {
-      "url": "http://localhost:3064/sse",
+    "postiz": {
+      "url": "http://localhost:3084/sse",
       "disabled": false,
       "alwaysAllow": []
     }

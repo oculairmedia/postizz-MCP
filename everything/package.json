@@ -1,7 +1,7 @@
 {
-  "name": "ghost-mcp-server",
+  "name": "postiz-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for Ghost blog integration",
+  "description": "MCP server for Postiz social media management",
   "type": "module",
   "scripts": {
     "build": "tsc",
