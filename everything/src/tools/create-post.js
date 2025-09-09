@@ -6,93 +6,131 @@ import axios from 'axios';
  */
 export async function handleCreatePost(api, args) {
     try {
-        // Destructure and validate required arguments
-        const { 
-            content,
-            integration_id,
-            post_type = "now",
-            publish_date,
-            media_urls = [],
-            short_link = false
-        } = args;
-
-        // Validate content
-        if (!content || typeof content !== 'string' || content.length < 6) {
+        // Validate API instance
+        if (!api) {
             throw new McpError(
-                ErrorCode.InvalidParams,
-                "Content must be at least 6 characters long"
+                ErrorCode.InternalError,
+                'API instance not initialized'
             );
         }
-
-        // Validate post_type
-        if (!["draft", "schedule", "now"].includes(post_type)) {
+        
+        // Validate required arguments with detailed messages
+        const { content, integration_id, post_type = 'now', publish_date, media_urls = [], short_link = false } = args;
+        
+        if (!content || typeof content !== 'string') {
+            throw new McpError(
+                ErrorCode.InvalidParams,
+                'Content parameter is required and must be a string'
+            );
+        }
+        
+        if (content.length < 6) {
+            throw new McpError(
+                ErrorCode.InvalidParams,
+                'Content must be at least 6 characters long'
+            );
+        }
+        
+        if (!['draft', 'schedule', 'now'].includes(post_type)) {
             throw new McpError(
                 ErrorCode.InvalidParams,
                 'post_type must be one of: "draft", "schedule", "now"'
             );
         }
-
-        // Validate publish_date
-        if (!publish_date || typeof publish_date !== 'string') {
+        
+        if (post_type === 'schedule' && !publish_date) {
             throw new McpError(
                 ErrorCode.InvalidParams,
-                'publish_date is required and must be a string'
+                'publish_date is required when post_type is "schedule"'
             );
         }
-
-        const API_URL = "https://postiz.oculair.ca/api/public/v1/posts";
-        const headers = {
-            "Authorization": api.defaults.headers.Authorization,
-            "Content-Type": "application/json"
-        };
-
-        // Build post value array
-        const value = [{ content }];
+        
+        // Validate media URLs
         if (media_urls && Array.isArray(media_urls)) {
             for (const url of media_urls) {
-                value.push({ media: url });
+                try {
+                    new URL(url);
+                } catch {
+                    throw new McpError(
+                        ErrorCode.InvalidParams,
+                        `Invalid media URL: ${url}`
+                    );
+                }
             }
         }
 
-        const postData = {
-            type: post_type,
-            shortLink: short_link,
-            date: publish_date,
-            posts: [{
-                integration: { id: integration_id },
-                value
-            }]
+        // Prepare request data
+        const requestData = {
+            content,
+            post_type,
+            short_link
         };
-
-        // Make request to Postiz API
-        const response = await api.post(API_URL, postData, { headers });
-
-        return {
-            content: [{
-                type: 'text',
-                text: JSON.stringify(response.data, null, 2)
-            }]
-        };
-    } catch (error) {
-        let errorMessage = 'Failed to create post: ';
         
-        if (axios.isAxiosError(error)) {
-            errorMessage += error.response?.data?.message || error.message;
-            if (error.response) {
-                errorMessage += `\nStatus: ${error.response.status}`;
-                errorMessage += `\nResponse Body: ${JSON.stringify(error.response.data)}`;
-            }
-        } else {
-            errorMessage += error.message;
+        if (integration_id) {
+            requestData.integration_id = integration_id;
         }
+        
+        if (publish_date) {
+            requestData.publish_date = publish_date;
+        }
+        
+        if (media_urls.length > 0) {
+            requestData.media_urls = media_urls;
+        }
+        
+        // Make API request with proper error handling
+        const response = await api.post('/public/v1/posts', requestData);
 
         return {
             content: [{
                 type: 'text',
-                text: errorMessage
-            }],
-            isError: true
+                text: JSON.stringify({
+                    success: true,
+                    message: 'Post created successfully',
+                    data: response.data
+                }, null, 2)
+            }]
         };
+        
+    } catch (error) {
+        // Handle different error types
+        if (error instanceof McpError) {
+            throw error; // Re-throw MCP errors as-is
+        }
+        
+        if (error.response) {
+            // API error response
+            const status = error.response.status;
+            const message = error.response.data?.message || error.message;
+            
+            if (status === 401) {
+                throw new McpError(
+                    ErrorCode.InvalidParams,
+                    'Authentication failed. Please check your API key.'
+                );
+            } else if (status === 403) {
+                throw new McpError(
+                    ErrorCode.InvalidParams,
+                    'Access forbidden. Check your permissions.'
+                );
+            } else if (status === 429) {
+                throw new McpError(
+                    ErrorCode.InternalError,
+                    'Rate limit exceeded. Please try again later.'
+                );
+            } else {
+                throw new McpError(
+                    ErrorCode.InternalError,
+                    `API error (${status}): ${message}`
+                );
+            }
+        }
+        
+        // Network or other errors
+        throw new McpError(
+            ErrorCode.InternalError,
+            `Failed to create post: ${error.message}`
+        );
     }
 }
 

@@ -6,46 +6,61 @@ import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
  */
 export async function handleGetIntegrations(api, args) {
     try {
-        const API_URL = "https://postiz.oculair.ca/api/public/v1/integrations";
-        const headers = {
-            "Authorization": api.defaults.headers.Authorization,
-            "Content-Type": "application/json"
-        };
+        // Validate API instance
+        if (!api) {
+            throw new McpError(
+                ErrorCode.InternalError,
+                'API instance not initialized'
+            );
+        }
 
-        console.log('Making request to:', API_URL);
-        console.log('Headers:', JSON.stringify(headers, null, 2));
-
-        // Make request to Postiz API
-        const response = await axios.get(API_URL, { headers });
+        // Make API request
+        const response = await api.get('/public/v1/integrations');
 
         return {
             content: [{
                 type: 'text',
-                text: JSON.stringify(response.data, null, 2)
+                text: JSON.stringify({
+                    success: true,
+                    message: 'Integrations retrieved successfully',
+                    data: response.data
+                }, null, 2)
             }]
         };
     } catch (error) {
-        let errorMessage = 'Failed to get integrations: ';
-        
-        if (axios.isAxiosError(error)) {
-            errorMessage += error.response?.data?.message || error.message;
-            if (error.response) {
-                errorMessage += `\nResponse Status: ${error.response.status}`;
-                errorMessage += `\nResponse Body: ${JSON.stringify(error.response.data)}`;
-            }
-            errorMessage += `\nRequest URL: ${error.config?.url}`;
-            errorMessage += `\nRequest Headers: ${JSON.stringify(error.config?.headers)}`;
-        } else {
-            errorMessage += error.message;
+        // Handle different error types
+        if (error instanceof McpError) {
+            throw error; // Re-throw MCP errors as-is
         }
-
-        return {
-            content: [{
-                type: 'text',
-                text: errorMessage
-            }],
-            isError: true
-        };
+        
+        if (error.response) {
+            // API error response
+            const status = error.response.status;
+            const message = error.response.data?.message || error.message;
+            
+            if (status === 401) {
+                throw new McpError(
+                    ErrorCode.InvalidParams,
+                    'Authentication failed. Please check your API key.'
+                );
+            } else if (status === 403) {
+                throw new McpError(
+                    ErrorCode.InvalidParams,
+                    'Access forbidden. Check your permissions.'
+                );
+            } else {
+                throw new McpError(
+                    ErrorCode.InternalError,
+                    `API error (${status}): ${message}`
+                );
+            }
+        }
+        
+        // Network or other errors
+        throw new McpError(
+            ErrorCode.InternalError,
+            `Failed to get integrations: ${error.message}`
+        );
     }
 }
 

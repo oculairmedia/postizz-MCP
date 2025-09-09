@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
 import axios from 'axios';
 
 /**
@@ -11,75 +12,162 @@ export class PostizServer {
      * Initialize the MCP server
      */
     constructor() {
-        // Initialize MCP server
-        this.server = new Server({
+        // Use high-level McpServer for better compliance
+        this.server = new McpServer({
             name: 'postiz-server',
             version: '1.0.0',
-        }, {
-            capabilities: {
-                tools: {},
-            },
         });
-
-        // Set up error handler
-        this.server.onerror = (error) => console.error('[MCP Error]', error);
 
         // Initialize API configuration
         this.baseUrl = process.env.POSTIZ_API_URL || 'https://postiz.oculair.ca/api';
         this.apiKey = process.env.POSTIZ_API_KEY;
 
         // Log API configuration for debugging
-        console.log('API Configuration:');
-        console.log('Base URL:', this.baseUrl);
-        console.log('API Key:', this.apiKey ? 'Available' : 'Not available');
+        console.error('API Configuration:');
+        console.error('Base URL:', this.baseUrl);
+        console.error('API Key:', this.apiKey ? 'Available' : 'Not available');
         
         if (!this.apiKey) {
-            console.warn('Warning: POSTIZ_API_KEY environment variable not set');
+            console.error('Warning: POSTIZ_API_KEY environment variable not set');
+        }
+
+        this.apiInstance = null;
+        this.setupTools();
+    }
+
+    setupTools() {
+        // Register create-post tool
+        this.server.tool(
+            'create-post',
+            'Create a new social media post via Postiz API',
+            {
+                content: z.string().min(6).describe('Post content (minimum 6 characters)'),
+                integration_id: z.string().optional().describe('Integration ID for specific platform'),
+                post_type: z.enum(['draft', 'schedule', 'now']).default('now').describe('Post type'),
+                publish_date: z.string().optional().describe('Publish date for scheduled posts'),
+                media_urls: z.array(z.string()).default([]).describe('Array of media URLs'),
+                short_link: z.boolean().default(false).describe('Whether to use short links')
+            },
+            async (args) => {
+                const { handleCreatePost } = await import('../tools/create-post.js');
+                return handleCreatePost(this.apiInstance, args);
+            }
+        );
+        
+        // Register get-integrations tool
+        this.server.tool(
+            'get-integrations',
+            'Get list of connected social media integrations',
+            {},
+            async (args) => {
+                const { handleGetIntegrations } = await import('../tools/get-integrations.js');
+                return handleGetIntegrations(this.apiInstance, args);
+            }
+        );
+        
+        // Register get-posts tool
+        this.server.tool(
+            'get-posts',
+            'Get list of posts from Postiz',
+            {
+                limit: z.number().optional().describe('Number of posts to retrieve'),
+                offset: z.number().optional().describe('Offset for pagination')
+            },
+            async (args) => {
+                const { handleGetPosts } = await import('../tools/get-posts.js');
+                return handleGetPosts(this.apiInstance, args);
+            }
+        );
+    }
+
+    async initializeAPI() {
+        const apiUrl = this.baseUrl;
+        const apiKey = this.apiKey;
+        
+        if (!apiUrl) {
+            throw new Error('POSTIZ_API_URL environment variable is required');
         }
         
-        // Initialize axios instance for API requests
-        this.api = axios.create({
-            baseURL: this.baseUrl,
+        if (!apiKey) {
+            throw new Error('POSTIZ_API_KEY environment variable is required');
+        }
+        
+        // Create axios instance with proper configuration
+        this.apiInstance = axios.create({
+            baseURL: apiUrl,
             headers: {
-                'Authorization': this.apiKey,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
-                'Accept': 'application/json',
+                'User-Agent': 'Postiz-MCP-Server/1.0.0'
             },
+            timeout: 30000, // 30 second timeout
+            validateStatus: (status) => status < 500 // Don't throw on 4xx errors
         });
-
-        // Make API instance available to tools
-        this.apiInstance = this.api;
+        
+        // Add request interceptor for logging
+        this.apiInstance.interceptors.request.use(
+            (config) => {
+                console.error(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+                return config;
+            },
+            (error) => {
+                console.error('API Request Error:', error);
+                return Promise.reject(error);
+            }
+        );
+        
+        // Add response interceptor for logging
+        this.apiInstance.interceptors.response.use(
+            (response) => {
+                console.error(`API Response: ${response.status} ${response.config.url}`);
+                return response;
+            },
+            (error) => {
+                console.error('API Response Error:', error.response?.status, error.response?.data);
+                return Promise.reject(error);
+            }
+        );
+        
+        // Test API connection
+        try {
+            await this.testAPIConnection();
+            console.error('API connection test successful');
+        } catch (error) {
+            console.error('API connection test failed:', error.message);
+            throw new Error(`Failed to connect to Postiz API: ${error.message}`);
+        }
     }
-
-    /**
-     * Get API headers with authentication
-     * @returns {Object} Headers object
-     */
-    getApiHeaders() {
-        return {
-            'Authorization': this.apiKey,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
+    
+    async testAPIConnection() {
+        try {
+            // Test with a simple API call
+            const response = await this.apiInstance.get('/public/v1/integrations');
+            return response.data;
+        } catch (error) {
+            if (error.response?.status === 401) {
+                throw new Error('Invalid API key');
+            } else if (error.response?.status === 404) {
+                throw new Error('API endpoint not found - check POSTIZ_API_URL');
+            } else {
+                throw error;
+            }
+        }
     }
-
-    /**
-     * Create a standard error response
-     * @param {Error} error - The error object
-     * @returns {Object} Formatted error response
-     */
-    createErrorResponse(error) {
-        console.error('Error in tool handler:', error);
+    
+    async connect(transport) {
+        await this.server.connect(transport);
+    }
+    
+    async close() {
+        await this.server.close();
+    }
+    
+    async handleRequest(request) {
+        // Simple request handler for HTTP transport
         return {
-            content: [{
-                type: 'text',
-                text: JSON.stringify({
-                    success: false,
-                    error: error.message,
-                    details: error.response?.data || error,
-                }, null, 2),
-            }],
-            isError: true,
+            jsonrpc: '2.0',
+            result: { message: 'Request received' },
+            id: request.id
         };
     }
 }
