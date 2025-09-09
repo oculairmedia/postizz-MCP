@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: everything/package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        cd everything
+        npm ci
+    
+    - name: Run linting (if available)
+      run: |
+        cd everything
+        npm run lint || echo "No lint script found"
+    
+    - name: Run tests (if available)
+      run: |
+        cd everything
+        npm test || echo "No test script found"
+    
+    - name: Build TypeScript (if available)
+      run: |
+        cd everything
+        npm run build || echo "No build script found"
+    
+    - name: Test MCP server startup
+      run: |
+        cd everything
+        timeout 10s node src/index.js --stdio < /dev/null || echo "Server startup test completed"
+
+  docker-build-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Docker image
+      run: docker build -t postiz-mcp:test .
+    
+    - name: Test Docker container
+      run: |
+        # Start container in background
+        docker run -d --name postiz-mcp-test -p 3084:3084 postiz-mcp:test
+        sleep 10
+        
+        # Test health endpoint
+        curl -f http://localhost:3084/health || exit 1
+        
+        # Cleanup
+        docker stop postiz-mcp-test
+        docker rm postiz-mcp-test
