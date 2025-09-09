@@ -80,41 +80,9 @@ async function startSSEServer(server) {
 }
 
 async function startHTTPServer(server) {
-    const app = express();
+    const { runHTTP } = await import('./core/http-transport.js');
     const port = process.env.PORT || 3084;
-    
-    app.use(cors());
-    app.use(express.json());
-    
-    // Health check endpoint
-    app.get('/health', (req, res) => {
-        res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-    });
-    
-    // MCP endpoint
-    app.post('/mcp', async (req, res) => {
-        try {
-            // Create a simple HTTP transport adapter
-            const response = await server.handleRequest(req.body);
-            res.json(response);
-        } catch (error) {
-            console.error('MCP request error:', error);
-            res.status(500).json({
-                jsonrpc: '2.0',
-                error: {
-                    code: -32603,
-                    message: 'Internal error'
-                },
-                id: req.body?.id || null
-            });
-        }
-    });
-    
-    app.listen(port, () => {
-        console.error(`HTTP server listening on port ${port}`);
-        console.error(`Health check: http://localhost:${port}/health`);
-        console.error(`MCP endpoint: http://localhost:${port}/mcp`);
-    });
+    await runHTTP(server, port);
 }
 
 // Handle graceful shutdown
