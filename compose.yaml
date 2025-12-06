@@ -1,6 +1,9 @@
 services:
   postizmcp:
-    image: ghcr.io/oculairmedia/postizz-mcp:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: postiz-mcp:local
     ports:
       - 3084:3084
     restart: unless-stopped

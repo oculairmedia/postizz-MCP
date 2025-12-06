@@ -41,12 +41,12 @@ export class PostizServer {
             'create-post',
             'Create a new social media post via Postiz API',
             {
-                content: z.string().min(6).describe('Post content (minimum 6 characters)'),
-                integration_id: z.string().optional().describe('Integration ID for specific platform'),
-                post_type: z.enum(['draft', 'schedule', 'now']).default('now').describe('Post type'),
-                publish_date: z.string().optional().describe('Publish date for scheduled posts'),
-                media_urls: z.array(z.string()).default([]).describe('Array of media URLs'),
-                short_link: z.boolean().default(false).describe('Whether to use short links')
+                content: z.string().min(1).describe('Post content text'),
+                integration_id: z.string().describe('Integration ID for the target platform (use get-integrations to find available IDs)'),
+                type: z.enum(['draft', 'schedule', 'now']).default('now').describe('Post type: draft, schedule, or now'),
+                date: z.string().describe('Publish date in ISO 8601 format (e.g., 2025-01-04T19:46:00.000Z)'),
+                media_ids: z.array(z.string()).default([]).describe('Array of media IDs (from uploaded media)'),
+                shortLink: z.boolean().default(false).describe('Whether to use short links')
             },
             async (args) => {
                 const { handleCreatePost } = await import('../tools/create-post.js');
@@ -68,10 +68,11 @@ export class PostizServer {
         // Register get-posts tool
         this.server.tool(
             'get-posts',
-            'Get list of posts from Postiz',
+            'Get list of posts from Postiz within a date range',
             {
-                limit: z.number().optional().describe('Number of posts to retrieve'),
-                offset: z.number().optional().describe('Offset for pagination')
+                startDate: z.string().describe('Start date in ISO 8601 format (e.g., 2025-01-01T00:00:00.000Z)'),
+                endDate: z.string().describe('End date in ISO 8601 format (e.g., 2025-12-31T23:59:59.000Z)'),
+                customer: z.string().optional().describe('Optional customer filter')
             },
             async (args) => {
                 const { handleGetPosts } = await import('../tools/get-posts.js');
@@ -93,10 +94,11 @@ export class PostizServer {
         }
         
         // Create axios instance with proper configuration
+        // Note: Postiz API expects the API key directly in the Authorization header (no Bearer prefix)
         this.apiInstance = axios.create({
             baseURL: apiUrl,
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
+                'Authorization': apiKey,
                 'Content-Type': 'application/json',
                 'User-Agent': 'Postiz-MCP-Server/1.0.0'
             },

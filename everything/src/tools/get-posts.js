@@ -13,16 +13,24 @@ export async function handleGetPosts(api, args) {
             );
         }
         
-        // Destructure arguments
-        const { limit, offset } = args;
+        // Destructure arguments - startDate and endDate are required by Postiz API
+        const { startDate, endDate, customer } = args;
+        
+        // Validate required parameters
+        if (!startDate || !endDate) {
+            throw new McpError(
+                ErrorCode.InvalidParams,
+                'startDate and endDate are required parameters (ISO 8601 format)'
+            );
+        }
         
         // Build query parameters
-        const params = {};
-        if (limit) {
-            params.limit = limit;
-        }
-        if (offset) {
-            params.offset = offset;
+        const params = {
+            startDate,
+            endDate
+        };
+        if (customer) {
+            params.customer = customer;
         }
 
         // Make API request  
@@ -80,21 +88,23 @@ export async function handleGetPosts(api, args) {
  */
 export const getPostsToolDefinition = {
     name: 'get_posts',
-    description: 'Retrieve posts from Postiz with optional pagination',
+    description: 'Retrieve posts from Postiz within a date range',
     inputSchema: {
         type: 'object',
         properties: {
-            limit: {
-                type: 'integer',
-                description: 'Number of posts to retrieve',
-                minimum: 1
+            startDate: {
+                type: 'string',
+                description: 'Start date in ISO 8601 format (e.g., 2025-01-01T00:00:00.000Z)'
             },
-            offset: {
-                type: 'integer',
-                description: 'Number of posts to skip (for pagination)',
-                minimum: 0
+            endDate: {
+                type: 'string',
+                description: 'End date in ISO 8601 format (e.g., 2025-12-31T23:59:59.000Z)'
+            },
+            customer: {
+                type: 'string',
+                description: 'Optional customer filter'
             }
         },
-        required: []
+        required: ['startDate', 'endDate']
     }
 };
